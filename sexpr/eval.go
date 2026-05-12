@@ -29,9 +29,13 @@ func (expr *SExpr) isNilValue() bool {
 
  
 func (expr *SExpr) Eval() (*SExpr, error) {
-	// check that a valid
+	// check that expr is valid
 	if expr == nil {
 		return nil, ErrEval
+	}
+
+	if expr.isNilValue() {
+		return mkNil(), nil
 	}
  
 	if expr.isNumber() {
@@ -116,6 +120,7 @@ func (expr *SExpr) CarFunc() (*SExpr, error) {
 		return nil, ErrEval
 	}
 
+
 	// get the argument and evaluate it
 	arg, err := args.Car()
 	if err != nil {
@@ -125,6 +130,9 @@ func (expr *SExpr) CarFunc() (*SExpr, error) {
 	argVal, err := arg.Eval()
 	if err != nil {
 		return nil, ErrEval
+	}
+	if argVal.isNil() {
+		return mkNil(), nil
 	}
 
 	// return the car of the evaluated result
@@ -158,6 +166,9 @@ func (expr *SExpr) CdrFunc() (*SExpr, error) {
 	if err != nil {
 		return nil, ErrEval
 	}
+	if argVal.isNil() {
+		return mkNil(), nil
+	}
 
 	// return the cdr of the evaluated result
 	return argVal.Cdr()
@@ -174,34 +185,6 @@ func (expr *SExpr) Car() (*SExpr, error) {
 }
  
 /*
-number:
-	expect not a number atom sexpr?
-		throw err
-	if it's a number, return the number
- 
-quote:
-	expect an sexpr whose sexpr is
-		atom: nil
-		car: ptr to QUOTE symbol
-		cdr: pts to an SExpr that:
-				its atom is nil
-				its car is the quotedExpr
-				cdr is mkNil()
- 
-	return quotedExpr in the CDR
- 
-car:
-	expect a sexpr whose:
-		car is the symbol CAR
-		cdr is a single s expr
-	return the inner sexpr's cdr
- 
-cdr:
-	expect a sexpr whose:
-		car is the symbol CDR
-		cdr is a single s expr
-	return the inner sexpr's car
- 
 cons:
 	expect a sexpr whose:
 		car is the symbol CONS

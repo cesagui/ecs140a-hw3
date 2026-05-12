@@ -177,7 +177,7 @@ func (p *ParserImpl) listNT() (*SExpr, error) {
 	}
 }
 
-func (p *ParserImpl) tailNT(first *SExpr) (*SExpr, error) {
+func (p *ParserImpl) tailNT() (*SExpr, error) {
 // no tokens are being consumed, so we only peek
 	tok, err := p.peekToken()
 	if err != nil {
@@ -205,22 +205,16 @@ func (p *ParserImpl) tailNT(first *SExpr) (*SExpr, error) {
 	case tokenRpar:
 		return nil, nil
 
-	/*
-		FIGURE OUT HOW TO WRITE THIS DOT CELL!!
-	*/
+	// for a dotted pair (a . b), just return b; the cons cell is formed by the caller
 	case tokenDot:
-		tok, _ := p.nextToken()
+		_, _ = p.nextToken() // consume the DOT token
 
 		sexpr, err := p.sexprNT()
 		if err != nil {
-			return nil, ParserErr
+			return nil, ErrParser
 		}
 
-		return &SExpr{
-			atom: nil,
-			car: first,
-			cdr: sexpr,
-		}, nil
+		return sexpr, nil
 
 	default:
 		return nil, ErrParser

@@ -41,7 +41,7 @@ type Parser interface {
 // Implement the Parser interface.
 type ParserImpl struct {
 	lex     *lexer
-	peekTok *Token
+	peekTok *token
 }
 
 // NewParser creates a struct of a type that satisfies the Parser interface.
@@ -50,7 +50,7 @@ func NewParser() Parser {
 }
 
 // Helper function which returns the next token.
-func (p *ParserImpl) nextToken() (*Token, error) {
+func (p *ParserImpl) nextToken() (*token, error) {
 	if tok := p.peekTok; tok != nil {
 		p.peekTok = nil
 		return tok, nil
@@ -65,12 +65,12 @@ func (p *ParserImpl) nextToken() (*Token, error) {
 }
 
 // Helper function which puts a token back as the next token.
-func (p *ParserImpl) backToken(tok *Token) {
+func (p *ParserImpl) backToken(tok *token) {
 	p.peekTok = tok
 }
 
 // Helper function to peek the next token.
-func (p *ParserImpl) peekToken() (*Token, error) {
+func (p *ParserImpl) peekToken() (*token, error) {
 	tok, err := p.nextToken()
 	if err != nil {
 		return nil, ErrParser
@@ -90,7 +90,7 @@ func (p *ParserImpl) startNT(input string) (*SExpr, error) {
 	p.lex = newLexer(input)
 
 	// apply the sexprNT rule 
-	sexpr, err := sexprNT()
+	sexpr, err := p.sexprNT()
 	if err != nil {
 		return nil, ErrParser
 	}
@@ -111,17 +111,16 @@ func (p *ParserImpl) sexprNT() (*SExpr, error) {
 	}
 
 	var sexpr *SExpr
-	var er error
 
 	// figure out which rule to use
-	switch tok.tokenType {
-	// form an atom from these two tokens
-	case tokenNumber, tokenSymbol:
-		sexpr = &SExpr{
-			atom: mkTokenSymbol(tok.literal),
-			car: nil,
-			cdr: nil,
-		}
+	switch tok.typ {
+	// form an atom from NUMBER
+	case tokenNumber:
+		sexpr = mkNumber(tok.num)
+	
+	// form an atom from SYMBOL
+	case tokenSymbol:
+		sexpr = mkSymbol(tok.literal)
 	
 	// apply rule S -> LPAR <list> RPAR
 	case tokenLpar:
@@ -138,6 +137,24 @@ func (p *ParserImpl) sexprNT() (*SExpr, error) {
 		}
 		sexpr = list
 	
+	// apply rule S -> QUOTE <sexpr>
+	case tokenQuote:
+		// parse the quoted expression
+		quotedExpr, err := p.sexprNT()
+		if err != nil {
+			return nil, ErrParser
+		}
+		// wrap it in (QUOTE <expr>)
+		sexpr = &SExpr{
+			atom: nil,
+			car: mkSymbol("QUOTE"),
+			cdr: &SExpr{
+				atom: nil,
+				car: quotedExpr,
+				cdr: mkNil(),
+			},
+		}
+	
 	default:
 		return nil, ErrParser
 	}
@@ -151,7 +168,7 @@ func (p *ParserImpl) listNT() (*SExpr, error) {
 	if err != nil {
 		return nil, ErrParser
 	}
-	switch tok.tokenType {
+	switch tok.typ {
 	// apply list -> sexpr tail
 	case tokenNumber, tokenSymbol, tokenLpar, tokenQuote:
 		sexpr, err := p.sexprNT()
@@ -171,7 +188,7 @@ func (p *ParserImpl) listNT() (*SExpr, error) {
 		}, nil
 	// apply list -> eps
 	case tokenRpar:
-		return nil, nil
+		return mkNil(), nil
 	default:
 		return nil, ErrParser
 	}
@@ -183,7 +200,7 @@ func (p *ParserImpl) tailNT() (*SExpr, error) {
 	if err != nil {
 		return nil, ErrParser
 	}
-	switch tok.tokenType {
+	switch tok.typ {
 	// apply tail -> sexpr tail
 	case tokenNumber, tokenSymbol, tokenLpar, tokenQuote:
 		sexpr, err := p.sexprNT()
@@ -203,7 +220,7 @@ func (p *ParserImpl) tailNT() (*SExpr, error) {
 		}, nil
 	// apply tail -> eps
 	case tokenRpar:
-		return nil, nil
+		return mkNil(), nil
 
 	// for a dotted pair (a . b), just return b; the cons cell is formed by the caller
 	case tokenDot:

@@ -12,5 +12,5 @@ import (
 var ErrEval = errors.New("eval error")
 
 func (expr *SExpr) Eval() (*SExpr, error) {
-	panic("TODO: implement Eval")
+	return nil, nil
 }

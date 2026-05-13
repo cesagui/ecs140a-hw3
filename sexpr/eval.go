@@ -77,6 +77,10 @@ func (expr *SExpr) Eval() (*SExpr, error) {
 				return expr.Listp()
 			case "ZEROP":
 				return expr.Zerop()
+			case "+":
+				return expr.Sum()
+			case "*":
+				return expr.Product()
 			default:
 				return nil, ErrEval
 			}
@@ -410,11 +414,78 @@ func (expr *SExpr) Zerop() (*SExpr, error) {
 
 	return mkNil(), nil
 }
+func (expr *SExpr) arithmeticHelper(op string) (*big.Int, error) {
+	// fmt.Println("EVALUATING: " + expr.SExprString())
+	if expr == nil || expr.isNilValue() {
+		if (op == "add") {
+			return big.NewInt(0), nil
+		}
+		return big.NewInt(1), nil
+		
+	}
+	// grab current expr car
+	exprCar, err := expr.Car()
+	if err != nil {
+		return nil, ErrEval
+	}
+	// evaluate the current expr
+	exprEval, err := exprCar.Eval()
+	if err != nil || !exprEval.isNumber() {
+		return nil, ErrEval
+	}
+	// form big int from bigEval value
+	exprEvalInt := exprEval.atom.num
 
+	// recursive step
+	exprCdr, err := expr.Cdr()
+	if err != nil {
+		return nil, ErrEval
+	}
+	exprCdrEval, err := exprCdr.arithmeticHelper(op)
+	if err != nil {
+		return nil, ErrEval
+	}
+	if (op == "add") {
+		return new(big.Int).Add(exprEvalInt, exprCdrEval), nil
+	}
+	return new(big.Int).Mul(exprEvalInt, exprCdrEval), nil
+}
 
+func (expr *SExpr) Sum() (*SExpr, error) {
+	// grab the first arg SExpr
+	// get arg by taking the cdr (arg . NIL)
+	arg1, err := expr.Cdr()
 
+	if err != nil || arg1 == nil{
+		return nil, ErrEval
+	}
+
+	// get the big int
+	sumInt, err := arg1.arithmeticHelper("add")
+	if err != nil {
+		return nil, ErrEval
+	}
+
+	return mkNumber(sumInt), nil
+}
+func (expr *SExpr) Product() (*SExpr, error) {
+	// grab the first arg SExpr
+	// get arg by taking the cdr (arg . NIL)
+	arg1, err := expr.Cdr()
+
+	if err != nil || arg1 == nil{
+		return nil, ErrEval
+	}
+
+	// get the big int
+	prodInt, err := arg1.arithmeticHelper("mul")
+	if err != nil {
+		return nil, ErrEval
+	}
+
+	return mkNumber(prodInt), nil
+}
 /*
-– LISTP and ZEROP;
 – Arithmetic operations + and *. To support arbitrary-precision arithmetic for
 integers you should use the package big.
 */

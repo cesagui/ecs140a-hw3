@@ -49,6 +49,15 @@ func (expr *SExpr) Eval() (*SExpr, error) {
 		if err != nil {
 			return nil, ErrEval
 		}
+		// fmt.Println("Eval: cons cell, car=", func() string {
+		// 	if car == nil {
+		// 		return "<nil>"
+		// 	}
+		// 	if car.isSymbol() {
+		// 		return car.atom.literal
+		// 	}
+		// 	return car.SExprString()
+		// }())
  
 		if car.isSymbol() {
 			switch car.atom.literal {
@@ -62,6 +71,8 @@ func (expr *SExpr) Eval() (*SExpr, error) {
 				return expr.Cons()
 			case "LENGTH":
 				return expr.Length()
+			case "ATOM":
+				return expr.Atom()
 			default:
 				return nil, ErrEval
 			}
@@ -198,7 +209,7 @@ func (expr *SExpr) Cons() (*SExpr, error) {
 	}
 	// get the CAR of cell
 	arg1Cell, err := arg1.Car()
-	if err != nil || arg1Cell == nil || arg1Cell.isNil(){
+	if err != nil || arg1Cell == nil {
 		return nil, ErrEval
 	}
 	// eval arg1
@@ -267,20 +278,52 @@ func (expr *SExpr) Length() (*SExpr, error) {
 	lengthCell := mkNumber(bigLen)
 	return lengthCell, nil
 }
+
+func (expr *SExpr) Atom() (*SExpr, error) {
+	// get arg by taking the cdr (arg . NIL)
+	arg1, err := expr.Cdr()
+	if err != nil || arg1 == nil {
+		return nil, ErrEval
+	}
  
+	// args must be a cons cell
+	if !arg1.isConsCell() {
+		return nil, ErrEval
+	}
+	// get the CAR of cell
+	arg1Cell, err := arg1.Car()
+	if err != nil || arg1Cell == nil {
+		return nil, ErrEval
+	}
+	// verify that only one arg is passed
+	argsCdr, err := arg1.Cdr()
+	if err != nil {
+		return nil, ErrEval
+	}
+	// check args CDR is nil VAL (empty list or NIL sym)
+	if !argsCdr.isNilValue() {
+		return nil, ErrEval
+	}
+	
+	if arg1Cell.isNilValue() {
+		return mkSymbolTrue(), nil
+	}
+
+	// eval arg1
+	arg1Eval, err := arg1Cell.Eval()
+	if err != nil {
+		return nil, ErrEval
+	}
+
+	// get the first element (the thing to quote)
+	if arg1Eval.isAtom() {
+		return mkSymbolTrue(), nil
+	}
+	return mkNil(), nil
+	
+}
 /*
-length:
-	expect a sexpr whose:
-		car is the symbol CONS
-		arglist of size 1:
-			we navigate the cdr this is arg 1, then make sure cdr is nil
-	now that we have the cell we want to navigate
-		if its a func, evaluate it
-		count the num of cells needed to r
- 
- 
-– CAR, CDR, CONS and LENGTH;
-– Unary predicates ATOM, LISTP and ZEROP;
+– Unary predicates LISTP and ZEROP;
 – Arithmetic operations + and *. To support arbitrary-precision arithmetic for
 integers you should use the package big.
 */

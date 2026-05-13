@@ -1,6 +1,7 @@
 package sexpr
  
 import (
+	"fmt"
 	"errors"
 	// "math/big"
 )
@@ -57,6 +58,8 @@ func (expr *SExpr) Eval() (*SExpr, error) {
 				return expr.CarFunc()
 			case "CDR":
 				return expr.CdrFunc()
+			case "CONS":
+				return expr.Cons()
 			default:
 				return nil, ErrEval
 			}
@@ -182,6 +185,47 @@ func (expr *SExpr) Cdr() (*SExpr, error) {
 func (expr *SExpr) Car() (*SExpr, error) {
 	// return the CAR of this cell
 	return expr.car, nil
+}
+
+func (expr *SExpr) Cons() (*SExpr, error) {
+	// get the first arg by taking the cdr (arg1 arg2 . NIL)
+	arg1, err := expr.Cdr()
+	fmt.Println(arg1)
+	if err != nil || arg1 == nil || arg1.isNil(){
+		fmt.Println(1)
+		return nil, ErrEval
+	}
+	// get the CAR of cell
+	arg1Cell, err := arg1.Car()
+	if err != nil || arg1Cell == nil || arg1Cell.isNil(){
+		return nil, ErrEval
+	}
+	// eval arg1
+	arg1Eval, _ := arg1Cell.Eval()
+
+	
+	arg2, err := arg1.Cdr()
+	if err != nil {
+		fmt.Println(2)
+		return nil, ErrEval
+	}
+	arg2Cell, err := arg2.Car()
+	if err != nil || arg2Cell == nil || arg2Cell.isNil(){
+		return nil, ErrEval
+	}
+	arg2Eval, _ := arg2Cell.Eval()
+
+	// check args2 CDR is nil VAL (empty list or NIL sym)
+	argsCdr, err := arg2.Cdr()
+	if err != nil {
+		fmt.Println(3)
+		return nil, ErrEval
+	}
+	if !argsCdr.isNilValue() {
+		fmt.Println(4)
+		return nil, ErrEval
+	}
+	return mkConsCell(arg1Eval, arg2Eval), nil
 }
  
 /*

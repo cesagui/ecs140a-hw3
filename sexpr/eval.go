@@ -73,6 +73,8 @@ func (expr *SExpr) Eval() (*SExpr, error) {
 				return expr.Length()
 			case "ATOM":
 				return expr.Atom()
+			case "LISTP":
+				return expr.Listp()
 			default:
 				return nil, ErrEval
 			}
@@ -285,11 +287,11 @@ func (expr *SExpr) Atom() (*SExpr, error) {
 	if err != nil || arg1 == nil {
 		return nil, ErrEval
 	}
- 
 	// args must be a cons cell
 	if !arg1.isConsCell() {
 		return nil, ErrEval
 	}
+
 	// get the CAR of cell
 	arg1Cell, err := arg1.Car()
 	if err != nil || arg1Cell == nil {
@@ -304,7 +306,7 @@ func (expr *SExpr) Atom() (*SExpr, error) {
 	if !argsCdr.isNilValue() {
 		return nil, ErrEval
 	}
-	
+
 	if arg1Cell.isNilValue() {
 		return mkSymbolTrue(), nil
 	}
@@ -322,8 +324,52 @@ func (expr *SExpr) Atom() (*SExpr, error) {
 	return mkNil(), nil
 	
 }
+
+// Anything that is not a number or is nil
+func (expr *SExpr) Listp() (*SExpr, error) {
+	// get arg by taking the cdr (arg . NIL)
+	arg1, err := expr.Cdr()
+	if err != nil || arg1 == nil {
+		return nil, ErrEval
+	}
+	// args must be a cons cell
+	if !arg1.isConsCell() {
+		return nil, ErrEval
+	}
+
+	// get the CAR of cell
+	arg1Cell, err := arg1.Car()
+	if err != nil || arg1Cell == nil {
+		return nil, ErrEval
+	}
+	// verify that only one arg is passed
+	argsCdr, err := arg1.Cdr()
+	if err != nil {
+		return nil, ErrEval
+	}
+	// check args CDR is nil VAL (empty list or NIL sym)
+	if !argsCdr.isNilValue() {
+		return nil, ErrEval
+	}
+	if arg1Cell.isNilValue() {
+		return mkSymbolTrue(), nil
+	}
+	// eval arg1
+	arg1Eval, err := arg1Cell.Eval()
+	if err != nil {
+		return nil, ErrEval
+	}
+
+	if arg1Eval.isNilValue() || !arg1Eval.isAtom() {
+		return mkSymbolTrue(), nil
+	}
+
+	return mkNil(), nil
+}
+
+
 /*
-– Unary predicates LISTP and ZEROP;
+– LISTP and ZEROP;
 – Arithmetic operations + and *. To support arbitrary-precision arithmetic for
 integers you should use the package big.
 */

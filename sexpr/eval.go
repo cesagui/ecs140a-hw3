@@ -3,7 +3,7 @@ package sexpr
 import (
 	"fmt"
 	"errors"
-	// "math/big"
+	"math/big"
 )
  
 // ErrEval is the error value returned by the Evaluator if the contains
@@ -60,6 +60,8 @@ func (expr *SExpr) Eval() (*SExpr, error) {
 				return expr.CdrFunc()
 			case "CONS":
 				return expr.Cons()
+			case "LENGTH":
+				return expr.Length()
 			default:
 				return nil, ErrEval
 			}
@@ -192,7 +194,6 @@ func (expr *SExpr) Cons() (*SExpr, error) {
 	arg1, err := expr.Cdr()
 	fmt.Println(arg1)
 	if err != nil || arg1 == nil || arg1.isNil(){
-		fmt.Println(1)
 		return nil, ErrEval
 	}
 	// get the CAR of cell
@@ -227,14 +228,47 @@ func (expr *SExpr) Cons() (*SExpr, error) {
 	}
 	return mkConsCell(arg1Eval, arg2Eval), nil
 }
+func (expr *SExpr) lengthHelper() (int64, error) {
+	if expr.isNilValue() {
+		return 0, nil
+	}
+	// try to grab the cdr of this cell 
+	exprCdr, err := expr.Cdr()
+	if err != nil {
+		return 0, ErrEval
+	}
+	recursiveCall, err := exprCdr.lengthHelper()
+	if err != nil {
+		return 0, ErrEval
+	}
+	return 1 + recursiveCall, nil
+}
+
+func (expr *SExpr) Length() (*SExpr, error) {
+	// eval CAR
+	arg1, err := expr.Cdr()
+	if err != nil || arg1 == nil || arg1.isNil(){
+		return nil, ErrEval
+	}
+	// get the CAR of cell
+	arg1Cell, err := arg1.Car()
+	if err != nil || arg1Cell == nil || arg1Cell.isNil(){
+		return nil, ErrEval
+	}
+	// eval arg1
+	arg1Eval, _ := arg1Cell.Eval()
+
+	length, err := arg1Eval.lengthHelper()
+	if err != nil {
+		return nil, ErrEval
+	}
+
+	bigLen := big.NewInt(length)
+	lengthCell := mkNumber(bigLen)
+	return lengthCell, nil
+}
  
 /*
-cons:
-	expect a sexpr whose:
-		car is the symbol CONS
-		arglist of size 2
-			when we navigate the cdr this is arg 1, and then we check the arg of this and this is arg 2, make sure it is nil
-	return cons cell formed
 length:
 	expect a sexpr whose:
 		car is the symbol CONS

@@ -75,6 +75,8 @@ func (expr *SExpr) Eval() (*SExpr, error) {
 				return expr.Atom()
 			case "LISTP":
 				return expr.Listp()
+			case "ZEROP":
+				return expr.Zerop()
 			default:
 				return nil, ErrEval
 			}
@@ -366,6 +368,49 @@ func (expr *SExpr) Listp() (*SExpr, error) {
 
 	return mkNil(), nil
 }
+
+// Anything that is not a number or is nil
+func (expr *SExpr) Zerop() (*SExpr, error) {
+	// get arg by taking the cdr (arg . NIL)
+	arg1, err := expr.Cdr()
+	if err != nil || arg1 == nil || arg1.isNil(){
+		return nil, ErrEval
+	}
+
+	// args must be a cons cell
+	if !arg1.isConsCell() {
+		return nil, ErrEval
+	}
+
+	// get the CAR of cell
+	arg1Cell, err := arg1.Car()
+	if err != nil || arg1Cell == nil {
+		return nil, ErrEval
+	}
+	// verify that only one arg is passed
+	argsCdr, err := arg1.Cdr()
+	if err != nil {
+		return nil, ErrEval
+	}
+	// check args CDR is nil VAL (empty list or NIL sym)
+	if !argsCdr.isNilValue() {
+		return nil, ErrEval
+	}
+	
+	// eval arg1
+	arg1Eval, err := arg1Cell.Eval()
+	if err != nil {
+		return nil, ErrEval
+	}
+
+	zeroValue := big.NewInt(0)
+	if arg1Eval.isNumber() && zeroValue.Cmp(arg1Eval.atom.num) == 0  {
+		return mkSymbolTrue(), nil
+	}
+
+	return mkNil(), nil
+}
+
 
 
 /*

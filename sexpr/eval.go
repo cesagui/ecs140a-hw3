@@ -221,7 +221,10 @@ func (expr *SExpr) Cons() (*SExpr, error) {
 		return nil, ErrEval
 	}
 	// eval arg1
-	arg1Eval, _ := arg1Cell.Eval()
+	arg1Eval, err := arg1Cell.Eval()
+	if err != nil {
+		return nil, ErrEval
+	}
 
 	
 	arg2, err := arg1.Cdr()
@@ -233,7 +236,10 @@ func (expr *SExpr) Cons() (*SExpr, error) {
 	if err != nil || arg2Cell == nil || arg2Cell.isNil(){
 		return nil, ErrEval
 	}
-	arg2Eval, _ := arg2Cell.Eval()
+	arg2Eval, err := arg2Cell.Eval()
+	if err != nil {
+		return nil, ErrEval
+	}
 
 	// check args2 CDR is nil VAL (empty list or NIL sym)
 	argsCdr, err := arg2.Cdr()
@@ -248,8 +254,15 @@ func (expr *SExpr) Cons() (*SExpr, error) {
 	return mkConsCell(arg1Eval, arg2Eval), nil
 }
 func (expr *SExpr) lengthHelper() (int64, error) {
+	if expr == nil {
+		return 0, nil
+	}
 	if expr.isNilValue() {
 		return 0, nil
+	}
+	// must be a cons cell for a proper list
+	if !expr.isConsCell() {
+		return 0, ErrEval
 	}
 	// try to grab the cdr of this cell 
 	exprCdr, err := expr.Cdr()
@@ -275,7 +288,10 @@ func (expr *SExpr) Length() (*SExpr, error) {
 		return nil, ErrEval
 	}
 	// eval arg1
-	arg1Eval, _ := arg1Cell.Eval()
+	arg1Eval, err := arg1Cell.Eval()
+	if err != nil {
+		return nil, ErrEval
+	}
 
 	length, err := arg1Eval.lengthHelper()
 	if err != nil {
@@ -407,8 +423,13 @@ func (expr *SExpr) Zerop() (*SExpr, error) {
 		return nil, ErrEval
 	}
 
+	// ZEROP only accepts numbers
+	if arg1Eval == nil || !arg1Eval.isNumber() {
+		return nil, ErrEval
+	}
+
 	zeroValue := big.NewInt(0)
-	if arg1Eval.isNumber() && zeroValue.Cmp(arg1Eval.atom.num) == 0  {
+	if zeroValue.Cmp(arg1Eval.atom.num) == 0  {
 		return mkSymbolTrue(), nil
 	}
 
@@ -485,8 +506,3 @@ func (expr *SExpr) Product() (*SExpr, error) {
 
 	return mkNumber(prodInt), nil
 }
-/*
-– Arithmetic operations + and *. To support arbitrary-precision arithmetic for
-integers you should use the package big.
-*/
- 

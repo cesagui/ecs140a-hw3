@@ -210,7 +210,7 @@ func (expr *SExpr) Car() (*SExpr, error) {
 func (expr *SExpr) Cons() (*SExpr, error) {
 	// get the first arg by taking the cdr (arg1 arg2 . NIL)
 	arg1, err := expr.Cdr()
-	fmt.Println(arg1)
+	// fmt.Println(arg1)
 	if err != nil || arg1 == nil || arg1.isNil(){
 		return nil, ErrEval
 	}
@@ -240,7 +240,7 @@ func (expr *SExpr) Cons() (*SExpr, error) {
 	argsCdr, _ := arg2.Cdr()
 
 	if !argsCdr.isNilValue() {
-		fmt.Println(4)
+		// fmt.Println(4)
 		return nil, ErrEval
 	}
 	return mkConsCell(arg1Eval, arg2Eval), nil

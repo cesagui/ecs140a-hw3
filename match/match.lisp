@@ -2,9 +2,9 @@
 
 (defun helper (rest-pattern assertion)
   (cond
-    ((null assertion) nil)
-    ((match rest-pattern assertion) t)
-    (t (helper rest-pattern (cdr assertion)))))
+    ((null assertion) nil) ;; assertion consumed
+    ((match rest-pattern assertion) t) ;; try to match the remaining pattern on the left-over assertion, if this holds, return true
+    (t (helper rest-pattern (cdr assertion))))) ;; consume an assertion character and try to match on remaining assertion
 
 (defun match (pattern assertion)
   (cond

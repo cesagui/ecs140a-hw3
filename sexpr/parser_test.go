@@ -72,6 +72,13 @@ func TestParserInvalid(t *testing.T) {
 		"(a . () . () . ())",
 		"((x .",
 		"(x",
+		"(x s a",
+		"(@", // use @ to test peekToken as it will be an invalid rune for parsing
+		"@",
+		"( a b @",
+		"(A @)",
+		"A @)",
+		"(A ( @ ))",
 	} {
 		_, err := NewParser().Parse(test)
 		if err == nil {

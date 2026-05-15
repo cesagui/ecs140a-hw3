@@ -31,6 +31,7 @@ func TestEvalInvalid(t *testing.T) {
 		"(LENGTH x)",
 		"(+ x)",
 		"(+ 'x)",
+		"(+ 1 2 X)",
 		"(* x)",
 		"(* 'x)",
 		"(ATOM)",
@@ -186,6 +187,7 @@ func TestEvalCONS(t *testing.T) {
 		}
 	}
 }
+
 func TestEvalCDR(t *testing.T) {
 	for idx, test := range []struct {
 		input, expected string
@@ -405,5 +407,128 @@ func TestEvalZEROP(t *testing.T) {
 			t.Errorf("\nin test %d (\"%s\"):\nerror:\tgot\t\t\t\"%s\"\n\t\texpected\t\"%s\"",
 				idx, test.input, actual.SExprString(), test.expected)
 		}
+	}
+}
+
+func TestEvalNilReceiver(t *testing.T) {
+    var expr *SExpr = nil
+    if _, err := expr.Eval(); err == nil {
+        t.Errorf("Eval on nil receiver should return an error")
+    }
+}
+
+func TestEvalNil_NilValue(t *testing.T) {
+    var expr *SExpr = nil
+    if isNil := expr.isNilValue(); isNil == true {
+        t.Errorf("isNilValue on nil should return false")
+    }
+}
+
+func TestCarFuncCdrError(t *testing.T) {
+	var expr *SExpr = nil
+	if _, err := expr.CarFunc(); err == nil {
+		t.Errorf("CarFunc on nil should return an error")
+	}
+}
+
+func TestCarFuncArgsCdrError(t *testing.T) {
+    expr := &SExpr{atom: nil, car: mkSymbol("CAR"), cdr: nil}
+    if _, err := expr.CarFunc(); err == nil {
+        t.Errorf("nil args cdr should return an error!")
+    }
+}
+
+func TestCdrFuncCdrError(t *testing.T) {
+	var expr *SExpr = nil
+	if _, err := expr.CdrFunc(); err == nil {
+		t.Errorf("CdrFunc on nil should return an error")
+	}
+}
+
+func TestCarNilError(t *testing.T) {
+	var expr *SExpr = nil
+	if _, err := expr.Car(); err == nil {
+		t.Errorf("Car on nil should return an error")
+	}
+}
+
+func TestConsNilArg1Error(t *testing.T) {
+	args := &SExpr{car: nil, cdr: mkNil()}
+    expr := &SExpr{car: mkSymbol("CONS"), cdr: args}
+
+	if _, err := expr.Cons(); err == nil {
+		t.Errorf("Cons should return an error when args1 is nil")
+	}
+}
+
+func TestConsNilArg2Error(t *testing.T) {
+	args := &SExpr{atom: mkTokenSymbol("test"), car: mkNil(), cdr: nil}
+    expr := &SExpr{car: mkSymbol("CONS"), cdr: args}
+
+	if _, err := expr.Cons(); err == nil {
+		t.Errorf("Cons should return an error when args2 is nil")
+	}
+}
+func TestLength(t *testing.T) {
+	argNilCar := &SExpr{atom: mkTokenSymbol("TEST")}
+	expr := &SExpr{car: mkSymbol("LENGTH"), cdr: argNilCar}
+
+	if _, err := expr.Length(); err == nil {
+		t.Errorf("Length should throw an error on nil Car")
+	}
+}
+
+func TestAtomUnit(t *testing.T) {
+	var nilExpr *SExpr = nil
+	if _, err := nilExpr.Atom(); err == nil {
+		t.Errorf("Atom should return an error on nil expr")
+	}
+
+	atomArg := &SExpr{atom: mkTokenNumber("LMAO"), car: nil, cdr: nil}
+	atomArgExpr := &SExpr{car: mkSymbol("ATOM"), cdr: atomArg}
+	if _, err := atomArgExpr.Atom(); err == nil {
+		t.Errorf("Atom should return an error when arg1 is not a cons cell")
+	}
+}
+
+func TestListpUnit(t *testing.T) {
+	var nilExpr *SExpr = nil
+	if _, err := nilExpr.Listp(); err == nil {
+		t.Errorf("Listp should return an error on nil expr")
+	}
+
+	listArg := &SExpr{atom: mkTokenNumber("LMAO"), car: nil, cdr: nil}
+	listArgExpr := &SExpr{car: mkSymbol("LISTP"), cdr: listArg}
+	if _, err := listArgExpr.Listp(); err == nil {
+		t.Errorf("Listp should return an error when arg1 is not a cons cell")
+	}
+}
+
+func TestZeropUnit(t *testing.T) {
+
+	zeropArg := &SExpr{atom: mkTokenNumber("LMAO"), car: nil, cdr: nil}
+	zeropArgExpr := &SExpr{car: mkSymbol("ZEROP"), cdr: zeropArg}
+	if _, err := zeropArgExpr.Zerop(); err == nil {
+		t.Errorf("Zerop should return an error when arg1 is not a cons cell")
+	}
+
+	zeropNilCarCell := &SExpr{car: mkNil(), cdr: mkNil()}
+	zeropNilCarCellExpr := &SExpr{car: mkSymbol("ZEROP"), cdr: zeropNilCarCell}
+	if _, err := zeropNilCarCellExpr.Zerop(); err == nil {
+		t.Errorf("Zerop should return an error when arg1Cell (from Car) is nil")
+	}
+}
+
+func TestSumUnit(t *testing.T) {
+	var nilExpr *SExpr = nil
+	if _, err := nilExpr.Sum(); err == nil {
+		t.Errorf("Sum should return an error on nil expr")
+	}
+}
+
+func TestProductUnit(t *testing.T) {
+	var nilExpr *SExpr = nil
+	if _, err := nilExpr.Product(); err == nil {
+		t.Errorf("Product should return an error on nil expr")
 	}
 }

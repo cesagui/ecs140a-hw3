@@ -44,11 +44,9 @@ func (expr *SExpr) Eval() (*SExpr, error) {
 	}
  
 	if expr.isConsCell() {
-		// check car is def
-		car, err := expr.Car()
-		if err != nil {
-			return nil, ErrEval
-		}
+		// check car is def : error check not necessary bc isConsCell already checks that the car exists
+		car, _ := expr.Car()
+
 		// fmt.Println("Eval: cons cell, car=", func() string {
 		// 	if car == nil {
 		// 		return "<nil>"
@@ -102,22 +100,17 @@ func (expr *SExpr) Quote() (*SExpr, error) {
 		return nil, ErrEval
 	}
  
-	// verify that only one arg is passed
-	argsCdr, err := args.Cdr()
-	if err != nil {
-		return nil, ErrEval
-	}
+	// verify that only one arg is passed; cdr error check is not necessary because isConsCell already checks that the args' CDR is defined
+	argsCdr, _ := args.Cdr()
+
  
 	// check args CDR is nil VAL (empty list or NIL sym)
 	if !argsCdr.isNilValue() {
 		return nil, ErrEval
 	}
  
-	// get the first element (the thing to quote)
-	quoteExpr, err := args.Car()
-	if err != nil {
-		return nil, ErrEval
-	}
+	// get the first element (the thing to quote); error check is not necessary because isConsCell already checks that the args' CAR is defined
+	quoteExpr, _ := args.Car()
  
 	return quoteExpr, nil
 }
@@ -145,11 +138,9 @@ func (expr *SExpr) CarFunc() (*SExpr, error) {
 	}
 
 
-	// get the argument and evaluate it
-	arg, err := args.Car()
-	if err != nil {
-		return nil, ErrEval
-	}
+	// get the argument and evaluate it: car error check is not needed because car() only ever throws an err when calling expr is undef
+	arg, _ := args.Car() 
+
 
 	argVal, err := arg.Eval()
 	if err != nil {
@@ -165,10 +156,11 @@ func (expr *SExpr) CarFunc() (*SExpr, error) {
 
 func (expr *SExpr) CdrFunc() (*SExpr, error) {
 	// expr is (CDR <arg>)
-	args, err := expr.Cdr()
-	if err != nil {
-		return nil, ErrEval
-	}
+	/*
+		CDR is only ever invoked by eval when expr is a cons cell
+		when it's a cons cell, its CDR is always defined so this error will never happen
+	*/
+	args, _ := expr.Cdr()
 
 	// verify exactly one argument
 	argsCdr, err := args.Cdr()
@@ -180,11 +172,11 @@ func (expr *SExpr) CdrFunc() (*SExpr, error) {
 		return nil, ErrEval
 	}
 
-	// get the argument and evaluate it
-	arg, err := args.Car()
-	if err != nil {
-		return nil, ErrEval
-	}
+	// get the argument and evaluate it : car error check is not needed because car() only ever throws an err when calling expr is undef
+	arg, _ := args.Car()
+	// if err != nil {
+	// 	return nil, ErrEval
+	// }
 
 	argVal, err := arg.Eval()
 	if err != nil {
@@ -199,11 +191,18 @@ func (expr *SExpr) CdrFunc() (*SExpr, error) {
 }
  
 func (expr *SExpr) Cdr() (*SExpr, error) {
+	if expr == nil {
+		return nil, ErrEval
+	}
+	
 	// return the CDR of this cell
 	return expr.cdr, nil
 }
  
 func (expr *SExpr) Car() (*SExpr, error) {
+	if expr == nil {
+		return nil, ErrEval
+	}
 	// return the CAR of this cell
 	return expr.car, nil
 }
@@ -225,13 +224,9 @@ func (expr *SExpr) Cons() (*SExpr, error) {
 	if err != nil {
 		return nil, ErrEval
 	}
+	// by running Car(), we already know that the calling expression is non-nil, so this will never return an error
+	arg2, _ := arg1.Cdr()
 
-	
-	arg2, err := arg1.Cdr()
-	if err != nil {
-		fmt.Println(2)
-		return nil, ErrEval
-	}
 	arg2Cell, err := arg2.Car()
 	if err != nil || arg2Cell == nil || arg2Cell.isNil(){
 		return nil, ErrEval
@@ -241,12 +236,9 @@ func (expr *SExpr) Cons() (*SExpr, error) {
 		return nil, ErrEval
 	}
 
-	// check args2 CDR is nil VAL (empty list or NIL sym)
-	argsCdr, err := arg2.Cdr()
-	if err != nil {
-		fmt.Println(3)
-		return nil, ErrEval
-	}
+	// Cdr() only fails if args2 is nil, but we know that it is non-nil from the prior Eval() call
+	argsCdr, _ := arg2.Cdr()
+
 	if !argsCdr.isNilValue() {
 		fmt.Println(4)
 		return nil, ErrEval
@@ -254,21 +246,16 @@ func (expr *SExpr) Cons() (*SExpr, error) {
 	return mkConsCell(arg1Eval, arg2Eval), nil
 }
 func (expr *SExpr) lengthHelper() (int64, error) {
-	if expr == nil {
-		return 0, nil
-	}
-	if expr.isNilValue() {
+	if  expr == nil || expr.isNilValue() {
 		return 0, nil
 	}
 	// must be a cons cell for a proper list
 	if !expr.isConsCell() {
 		return 0, ErrEval
 	}
-	// try to grab the cdr of this cell 
-	exprCdr, err := expr.Cdr()
-	if err != nil {
-		return 0, ErrEval
-	}
+	// CDR is always defined on a cons cell, no check necessary
+	exprCdr, _ := expr.Cdr()
+
 	recursiveCall, err := exprCdr.lengthHelper()
 	if err != nil {
 		return 0, ErrEval
@@ -281,12 +268,13 @@ func (expr *SExpr) Length() (*SExpr, error) {
 	arg1, err := expr.Cdr()
 	if err != nil || arg1 == nil || arg1.isNil(){
 		return nil, ErrEval
-	}
+	} // isNil makes sure that arg1 is defined, with either a Car, Cdr or Atom
 	// get the CAR of cell
 	arg1Cell, err := arg1.Car()
 	if err != nil || arg1Cell == nil || arg1Cell.isNil(){
 		return nil, ErrEval
 	}
+
 	// eval arg1
 	arg1Eval, err := arg1Cell.Eval()
 	if err != nil {
@@ -319,11 +307,8 @@ func (expr *SExpr) Atom() (*SExpr, error) {
 	if err != nil || arg1Cell == nil {
 		return nil, ErrEval
 	}
-	// verify that only one arg is passed
-	argsCdr, err := arg1.Cdr()
-	if err != nil {
-		return nil, ErrEval
-	}
+	// we know that arg1 is defined from above call, so arg1.cdr will never return an error
+	argsCdr, _ := arg1.Cdr()
 	// check args CDR is nil VAL (empty list or NIL sym)
 	if !argsCdr.isNilValue() {
 		return nil, ErrEval
@@ -364,11 +349,9 @@ func (expr *SExpr) Listp() (*SExpr, error) {
 	if err != nil || arg1Cell == nil {
 		return nil, ErrEval
 	}
-	// verify that only one arg is passed
-	argsCdr, err := arg1.Cdr()
-	if err != nil {
-		return nil, ErrEval
-	}
+	// verify that only one arg is passed : this will only fail if arg1 is undefined, but we check this already
+	argsCdr, _ := arg1.Cdr()
+
 	// check args CDR is nil VAL (empty list or NIL sym)
 	if !argsCdr.isNilValue() {
 		return nil, ErrEval
@@ -402,16 +385,12 @@ func (expr *SExpr) Zerop() (*SExpr, error) {
 		return nil, ErrEval
 	}
 
-	// get the CAR of cell
-	arg1Cell, err := arg1.Car()
-	if err != nil || arg1Cell == nil {
-		return nil, ErrEval
-	}
-	// verify that only one arg is passed
-	argsCdr, err := arg1.Cdr()
-	if err != nil {
-		return nil, ErrEval
-	}
+	// arg1Cell only fails if arg1 is undefined, but we know it's defined from above isConsCell() call
+	arg1Cell, _ := arg1.Car()
+
+	// argsCDR only fails if arg1 is undefined, but we know it's defined from above isConsCell() call
+	argsCdr, _ := arg1.Cdr()
+
 	// check args CDR is nil VAL (empty list or NIL sym)
 	if !argsCdr.isNilValue() {
 		return nil, ErrEval
@@ -444,11 +423,9 @@ func (expr *SExpr) arithmeticHelper(op string) (*big.Int, error) {
 		return big.NewInt(1), nil
 		
 	}
-	// grab current expr car
-	exprCar, err := expr.Car()
-	if err != nil {
-		return nil, ErrEval
-	}
+	// grab current expr car : only failed if expr is nil (but we handle that case above)
+	exprCar, _ := expr.Car()
+
 	// evaluate the current expr
 	exprEval, err := exprCar.Eval()
 	if err != nil || !exprEval.isNumber() {
@@ -457,11 +434,9 @@ func (expr *SExpr) arithmeticHelper(op string) (*big.Int, error) {
 	// form big int from bigEval value
 	exprEvalInt := exprEval.atom.num
 
-	// recursive step
-	exprCdr, err := expr.Cdr()
-	if err != nil {
-		return nil, ErrEval
-	}
+	// recursive step : CDR call only fails if expr is nil (but we handle that case above)
+	exprCdr, _ := expr.Cdr()
+
 	exprCdrEval, err := exprCdr.arithmeticHelper(op)
 	if err != nil {
 		return nil, ErrEval
@@ -475,6 +450,7 @@ func (expr *SExpr) arithmeticHelper(op string) (*big.Int, error) {
 func (expr *SExpr) Sum() (*SExpr, error) {
 	// grab the first arg SExpr
 	// get arg by taking the cdr (arg . NIL)
+
 	arg1, err := expr.Cdr()
 
 	if err != nil || arg1 == nil{
